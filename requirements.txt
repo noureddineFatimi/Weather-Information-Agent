@@ -1,2 +1,5 @@
 openai-agents
 ollama
+python-dotenv
+requests
+pydantic
