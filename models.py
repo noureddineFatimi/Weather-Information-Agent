@@ -1,3 +1,4 @@
+from dotenv.variables import Literal
 from pydantic import BaseModel, Field
 
 class Location(BaseModel):
@@ -20,52 +21,40 @@ class DailyWeatherUnit(BaseModel):
     precipitation_probability_unit: str
     wind_speed_unit: str
     precipitation_hours_unit: str
-    precipitation_sum_unit: str
-    wind_gusts_unit: str
-    wind_direction_unit: str
 
 class DailyWeather(BaseModel):
     daily_time: str
-    order_day: float
+    order_day: int
     temperature_max: float
     temperature_min: float
     precipitation_probability_max: float
     wind_speed_max: float
     precipitation_hours: float
-    precipitation_sum: float
-    wind_gusts_max: float
-    wind_direction_dominant: float
-
+    
 class DailyWeatherResponse(BaseModel):
     daily_weather_unit :DailyWeatherUnit
     daily_weather: list[DailyWeather]
 
 class HourlyWeatherUnit(BaseModel):
+    utc_offset_seconds: int 
+    timezone: str
     time_unit: str
     temperature_unit: str
     relative_humidity_unit: str
     rain_unit: str
     visibility_unit: str
     wind_speed_unit: str
-    wind_direction_unit: str
     precipitation_probability_unit: str
-    showers_unit: str
-    snowfall_unit: str
-    cloud_cover_unit: str
 
 class HourlyWeather(BaseModel):
     hourly_time: str
-    order_hour: float
+    order_hour: int
     temperature: float
     relative_humidity: float
     rain: float
     visibility: float
     wind_speed: float
-    wind_direction: float
     precipitation_probability: float
-    showers: float
-    snowfall: float
-    cloud_cover: float
 
 class HourlyWeatherResponse(BaseModel):
     hourly_weather_unit :HourlyWeatherUnit
@@ -82,3 +71,9 @@ class WeatherAlert(BaseModel):
     instruction: str
     effective_time: str
     expiry_time: str
+
+class CurrentWeather(BaseModel):
+    temperature: float
+    wind_speed: float
+    temperature_unit: str
+    wind_speed_unit: str
