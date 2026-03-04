@@ -36,7 +36,7 @@ agent = Agent( name="Weather assistant", instructions="""
 
 async def generate_response(user_input:str, conversation:list):
     result = await Runner.run(agent, conversation +  [{"role": "user", "content": f"{user_input}"}])
-    return result.to_input_list()
+    return result.final_output
      
 async def test():
     print("\nTo exit type 'exit'\n")

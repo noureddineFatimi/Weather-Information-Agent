@@ -2,7 +2,10 @@ from flask import Flask, request
 from agent import generate_response
 from werkzeug.exceptions import HTTPException
 from agents import ModelBehaviorError, MaxTurnsExceeded
+from flask_cors import CORS
+
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/v1/api/agent", methods=["POST"])
 async def generate_agent_response():
