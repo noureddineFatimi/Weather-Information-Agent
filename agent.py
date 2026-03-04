@@ -10,9 +10,7 @@ set_default_openai_client(client=client, use_for_tracing=False)
 set_default_openai_api("chat_completions")
 set_tracing_disabled(disabled=True)
 
-async def main():
-    try:
-        agent = Agent( name="Assistant", instructions="""
+agent = Agent( name="Weather assistant", instructions="""
             You are a friendly and natural weather assistant.
             - Answer directly and clearly.
             - Be conversational and human-like.
@@ -34,21 +32,27 @@ async def main():
             - If the user asks for another things not related to weather, answer by saying that you are a weather assistant and you can only answer questions related to weather.
             - I the user asks for past weather, answer by saying that you are a weather assistant and you can only provide current and forecast weather information.
             - If a error occurs, don't give the details of the error in your response.
-        """, model=OLLAMA_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])
-        result = Runner.run_streamed(agent, "What is Internet?")
-        async for event in result.stream_events():
-            if event.type == "run_item_stream_event":                
-                if event.item.type == "tool_call_item":
-                    print(f"-- Tool called : {event.item.raw_item.name}")
-                    print(f"-- Tool arguments : {event.item.raw_item.arguments}")
-                if event.item.type == "tool_call_output_item":
-                    print(f"-- Tool output : {event.item.output}")
-        print("--------------------------------------------------------------")
-        print(result.final_output)
+        """, model=OLLAMA_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
+
+async def generate_response(user_input:str, conversation:list):
+    result = await Runner.run(agent, conversation +  [{"role": "user", "content": f"{user_input}"}])
+    return result.to_input_list()
+     
+async def test():
+    print("\nTo exit type 'exit'\n")
+    conversation = []
+    try:
+        while True:
+            user_input = input("\nYou: ")
+            if user_input.lower() == "exit":
+                break
+            result = await Runner.run(agent, conversation +  [{"role": "user", "content": f"{user_input}"}])
+            print("\nWeather Agent:", result.final_output)
+            conversation = conversation + result.to_input_list()
     except ModelBehaviorError:
         print("Model encountered an error")
     except MaxTurnsExceeded:
         print("Conversation too long" )
     
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(generate_response("hi", []))

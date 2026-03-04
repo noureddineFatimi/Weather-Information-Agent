@@ -9,11 +9,11 @@ class CurrentWeatherResponse(BaseModel):
     temperature: float
     wind_speed: float
     relative_humidity: float
-    visibility: float
+    precipitation: float
     temperature_unit: str
     wind_speed_unit: str
     relative_humidity_unit:str
-    visibility_unit:str
+    precipitation_unit:str
 
 class DailyWeatherUnit(BaseModel):
     time_unit: str

@@ -17,13 +17,13 @@ def get_current_weather(location:models.Location=Field(description="Geographic c
         "longitude":location.longitude,
         "temperature_unit":temperature_unit,
         "wind_speed_unit":wind_speed_unit,
-	    "current": ["temperature_2m", "wind_speed_10m", "relative_humidity_2m", "visibility"]
+	    "current": ["temperature_2m", "wind_speed_10m", "relative_humidity_2m", "precipitation"]
     }
     try:
         response=requests.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
         response.raise_for_status()
         data = response.json()
-        return models.CurrentWeatherResponse(temperature=data["current"]["temperature_2m"], wind_speed=data["current"]["wind_speed_10m"], relative_humidity=data["current"]["relative_humidity_2m"], visibility=data["current"]["visibility"], temperature_unit=data["current_units"]["temperature_2m"], wind_speed_unit=data["current_units"]["wind_speed_10m"], relative_humidity_unit=data["current_units"]["relative_humidity_2m"], visibility_unit=data["current_units"]["visibility"])
+        return models.CurrentWeatherResponse(temperature=data["current"]["temperature_2m"], wind_speed=data["current"]["wind_speed_10m"], relative_humidity=data["current"]["relative_humidity_2m"], precipitation=data["current"]["precipitation"], temperature_unit=data["current_units"]["temperature_2m"], wind_speed_unit=data["current_units"]["wind_speed_10m"], relative_humidity_unit=data["current_units"]["relative_humidity_2m"], precipitation_unit=data["current_units"]["precipitation"])
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
     except ValueError:
