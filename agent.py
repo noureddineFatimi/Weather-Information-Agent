@@ -36,23 +36,8 @@ agent = Agent( name="Weather assistant", instructions="""
 
 async def generate_response(user_input:str, conversation:list):
     result = await Runner.run(agent, conversation +  [{"role": "user", "content": f"{user_input}"}])
+    print("Agent response:", result.final_output)
     return result.final_output
      
-async def test():
-    print("\nTo exit type 'exit'\n")
-    conversation = []
-    try:
-        while True:
-            user_input = input("\nYou: ")
-            if user_input.lower() == "exit":
-                break
-            result = await Runner.run(agent, conversation +  [{"role": "user", "content": f"{user_input}"}])
-            print("\nWeather Agent:", result.final_output)
-            conversation = conversation + result.to_input_list()
-    except ModelBehaviorError:
-        print("Model encountered an error")
-    except MaxTurnsExceeded:
-        print("Conversation too long" )
-    
 if __name__ == "__main__":
-    asyncio.run(generate_response("hi", []))
+    asyncio.run(generate_response("Will rain tomorrow in Paris?", [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello! How can I assist you with the weather today?"}]))
