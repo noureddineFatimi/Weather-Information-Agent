@@ -129,7 +129,7 @@ def get_hourly_forecast(location:models.Location=Field(description="Geographic c
     except requests.RequestException:
         raise RuntimeError("Weather service unavailable") 
 
-@function_tool(failure_error_function=None)
+@function_tool
 def get_weather_alerts(location:models.Location=Field(description="Geographic coordinates (latitude and longitude in decimal degrees)"), severity: Literal["all", "minor", "moderate", "severe", "extreme"] = "all") -> list[models.WeatherAlert]:
     """
     Retrieve weather alerts for a given location.
