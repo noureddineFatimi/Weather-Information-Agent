@@ -1,4 +1,4 @@
-from agents import Agent, Runner, set_default_openai_client, set_tracing_disabled, set_default_openai_api, ModelBehaviorError, MaxTurnsExceeded
+from agents import Agent, ItemHelpers, Runner, set_default_openai_client, set_tracing_disabled, set_default_openai_api
 from config import OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME
 from openai import AsyncOpenAI
 import asyncio
@@ -35,9 +35,17 @@ agent = Agent( name="Weather assistant", instructions="""
         """, model=OLLAMA_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
 
 async def generate_response(user_input:str, conversation:list):
-    result = await Runner.run(agent, conversation +  [{"role": "user", "content": f"{user_input}"}])
-    print("Agent response:", result.final_output)
+    result = await Runner.run(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
     return result.final_output
-     
-if __name__ == "__main__":
-    asyncio.run(generate_response("Will rain tomorrow in Paris?", [{"role": "user", "content": "Hi"}, {"role": "assistant", "content": "Hello! How can I assist you with the weather today?"}]))
+
+async def test():
+        result = Runner.run_streamed(agent, "Is there some weather alerts in Casablanca ?")
+        async for event in result.stream_events():
+            if event.type == "run_item_stream_event":
+                if event.item.type == "tool_call_item":
+                    print(f"-- Tool called : {event.item.raw_item.name}")
+                    print(f"-- Tool arguments : {event.item.raw_item.arguments}")                
+                if event.item.type == "tool_call_output_item":
+                    print(f"-- Tool output : {event.item.output}")
+        print("\n--------------------------------------------------------------\n")
+        print(result.final_output)
