@@ -5,3 +5,5 @@ requests
 pydantic
 Flask[async]
 flask-cors
+quart
+quart-cors

@@ -1,16 +1,16 @@
-from flask import Flask, request
+from quart import Quart, request
 from agent import generate_response
 from werkzeug.exceptions import HTTPException
 from agents import ModelBehaviorError, MaxTurnsExceeded
-from flask_cors import CORS
+from quart_cors import cors
 
-app = Flask(__name__)
-CORS(app)
+app = Quart(__name__)
+app = cors(app, allow_origin="*")
 
 @app.route("/v1/api/agent", methods=["POST"])
 async def generate_agent_response():
     try:
-        data = request.get_json()
+        data = await request.get_json()
         if not data:
             return {"error": "Request must contain JSON body"}, 400
         user_input = data.get("user_input")
