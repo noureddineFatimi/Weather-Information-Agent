@@ -4,21 +4,22 @@ from agents import function_tool
 from typing import Literal
 from pydantic import Field
 import models
+import time
 
 get_current_weather_cache = {}
+cache_timeout_current_weather = 900
 
-@function_tool
+@function_tool(failure_error_function=None)
 async def get_current_weather(location:models.Location=Field(description="Geographic coordinates (latitude and longitude in decimal degrees)"), temperature_unit:Literal["celsius", "fahrenheit"]="celsius", wind_speed_unit:Literal["kmh", "ms", "mph", "kn"]="kmh")-> models.CurrentWeatherResponse:
     """"
     Retrieve current weather conditions for a given location.
 
     Returns temperature and wind speed, using the specified measurement units.
     """
-
     cache_key = f"current_weather_{location.latitude}_{location.longitude}_{temperature_unit}_{wind_speed_unit}"
 
-    if cache_key in get_current_weather_cache:
-        return get_current_weather_cache[cache_key]
+    if cache_key in get_current_weather_cache and time.time() - get_current_weather_cache[cache_key]['timestamp'] < cache_timeout_current_weather:
+            return get_current_weather_cache[cache_key]['data']
 
     params={
         "latitude":location.latitude,
@@ -32,8 +33,10 @@ async def get_current_weather(location:models.Location=Field(description="Geogra
             response = await client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
-            get_current_weather_cache[cache_key] = models.CurrentWeatherResponse(temperature=data["current"]["temperature_2m"], wind_speed=data["current"]["wind_speed_10m"], relative_humidity=data["current"]["relative_humidity_2m"], precipitation=data["current"]["precipitation"], temperature_unit=data["current_units"]["temperature_2m"], wind_speed_unit=data["current_units"]["wind_speed_10m"], relative_humidity_unit=data["current_units"]["relative_humidity_2m"], precipitation_unit=data["current_units"]["precipitation"])
-            return get_current_weather_cache[cache_key]
+            get_current_weather_cache[cache_key] = {}
+            get_current_weather_cache[cache_key]['timestamp'] = time.time()
+            get_current_weather_cache[cache_key]['data'] = models.CurrentWeatherResponse(temperature=data["current"]["temperature_2m"], wind_speed=data["current"]["wind_speed_10m"], relative_humidity=data["current"]["relative_humidity_2m"], precipitation=data["current"]["precipitation"], temperature_unit=data["current_units"]["temperature_2m"], wind_speed_unit=data["current_units"]["wind_speed_10m"], relative_humidity_unit=data["current_units"]["relative_humidity_2m"], precipitation_unit=data["current_units"]["precipitation"])
+            return get_current_weather_cache[cache_key]['data']
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
     except ValueError:
@@ -50,6 +53,7 @@ async def get_current_weather(location:models.Location=Field(description="Geogra
         raise RuntimeError("Weather service unavailable") 
 
 get_weather_forecast_cache = {}
+cache_timeout_weather_forecast = 3600
 
 @function_tool
 async def get_weather_forecast(location:models.Location=Field(description="Geographic coordinates (latitude and longitude in decimal degrees)"),temperature_unit:Literal["celsius", "fahrenheit"]="celsius", wind_speed_unit:Literal["kmh", "ms", "mph", "kn"]="kmh", forecast_days:int=Field(ge=1, le=16, description="Number of forecast days to retrieve, include today.")) -> models.DailyWeatherResponse:
@@ -61,8 +65,8 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
 
     cache_key = f"weather_forecast_{location.latitude}_{location.longitude}_{temperature_unit}_{wind_speed_unit}_{forecast_days}"
 
-    if cache_key in get_weather_forecast_cache:
-        return get_weather_forecast_cache[cache_key]
+    if cache_key in get_weather_forecast_cache and time.time() - get_weather_forecast_cache[cache_key]['timestamp'] < cache_timeout_weather_forecast:
+        return get_weather_forecast_cache[cache_key]['data']
 
     daily_forecast_weathers: list[models.DailyWeather] = []
     params={
@@ -83,8 +87,10 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
                 daily_forecast_weather= models.DailyWeather(daily_time=data["daily"]["time"][i], order_day=i + 1, temperature_max=data["daily"]["temperature_2m_max"][i], temperature_min=data["daily"]["temperature_2m_min"][i], precipitation_probability_max=data["daily"]["precipitation_probability_max"][i], wind_speed_max=data["daily"]["wind_speed_10m_max"][i], precipitation_hours=data["daily"]["precipitation_hours"][i])
                 daily_forecast_weathers.append(daily_forecast_weather)
             daily_weather_unit = models.DailyWeatherUnit(time_unit=data["daily_units"]["time"], temperature_unit=data["daily_units"]["temperature_2m_max"], precipitation_probability_unit=data["daily_units"]["precipitation_probability_max"], wind_speed_unit=data["daily_units"]["wind_speed_10m_max"], precipitation_hours_unit=data["daily_units"]["precipitation_hours"])
-            get_weather_forecast_cache[cache_key] = models.DailyWeatherResponse(daily_weather_unit=daily_weather_unit, daily_weather=daily_forecast_weathers)
-            return get_weather_forecast_cache[cache_key]
+            get_weather_forecast_cache[cache_key] = {}
+            get_weather_forecast_cache[cache_key]['timestamp'] = time.time()
+            get_weather_forecast_cache[cache_key]['data'] = models.DailyWeatherResponse(daily_weather_unit=daily_weather_unit, daily_weather=daily_forecast_weathers)
+            return get_weather_forecast_cache[cache_key]['data']
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
     except ValueError:
@@ -96,7 +102,7 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
     except httpx.Timeout:
         raise RuntimeError("Weather service timeout")
     except httpx.HTTPError as e:
-        raise RuntimeError(f"Weather API returned {e.response.status_code}")
+        raise RuntimeError(f"Weather API returned {e}")
     except Exception:
         raise RuntimeError("Weather service unavailable") 
 
@@ -146,11 +152,12 @@ async def get_hourly_forecast(location:models.Location=Field(description="Geogra
     except httpx.Timeout:
         raise RuntimeError("Weather service timeout")
     except httpx.HTTPError as e:
-        raise RuntimeError(f"Weather API returned {e.response.status_code}")
+        raise RuntimeError(f"Weather API returned {e}")
     except Exception:
         raise RuntimeError("Weather service unavailable") 
 
 get_weather_alerts_cache = {}
+cache_timeout_weather_alerts = 1800
 
 @function_tool
 async def get_weather_alerts(location:models.Location=Field(description="Geographic coordinates (latitude and longitude in decimal degrees)"), severity: Literal["all", "minor", "moderate", "severe", "extreme"] = "all") -> list[models.WeatherAlert]:
@@ -160,6 +167,7 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
     Returns a list of weather alerts, including their title, severity, urgency, and description.
     """
     cache_key = f"weather_alerts_{location.latitude}_{location.longitude}_{severity}"
+
     if cache_key in get_weather_alerts_cache:
         return get_weather_alerts_cache[cache_key]
 
@@ -177,10 +185,14 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
                 if severity == "all" or alert["severity"].lower() == severity:
                     weather_alerts.append(models.WeatherAlert(title=alert["headline"], message_type=alert["msgtype"], severity=alert["severity"], urgency=alert["urgency"], areas=alert["areas"], event=alert["event"], effective_time=alert["effective"], expiry_time=alert["expires"], description=alert["desc"], instruction=alert["instruction"]))
             if len(weather_alerts) == 0:
-                get_weather_alerts_cache[cache_key] = {"message": "No weather alerts for this location and severity level."}
-                return get_weather_alerts_cache[cache_key]
-            get_weather_alerts_cache[cache_key] = weather_alerts
-            return get_weather_alerts_cache[cache_key]
+                get_weather_alerts_cache[cache_key] = {}
+                get_weather_alerts_cache[cache_key]['timestamp'] = time.time()
+                get_weather_alerts_cache[cache_key]['data'] = {"message": "No weather alerts for this location and severity level."}
+                return get_weather_alerts_cache[cache_key]['data']
+            get_weather_alerts_cache[cache_key] = {}
+            get_weather_alerts_cache[cache_key]['timestamp'] = time.time()
+            get_weather_alerts_cache[cache_key]['data'] = weather_alerts
+            return get_weather_alerts_cache[cache_key]['data']
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
     except ValueError:
@@ -192,7 +204,7 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
     except httpx.Timeout:
         raise RuntimeError("Weather service timeout")
     except httpx.HTTPError as e:
-        raise RuntimeError(f"Weather API returned {e.response.status_code}")
+        raise RuntimeError(f"Weather API returned {e}")
     except Exception:
         raise RuntimeError("Weather service unavailable") 
 
@@ -233,7 +245,7 @@ async def resolve_location(name:str=Field(description="City name to resolve into
     except httpx.Timeout:
         raise RuntimeError("Weather service timeout")
     except httpx.HTTPError as e:
-        raise RuntimeError(f"Weather API returned {e.response.status_code}")
+        raise RuntimeError(f"Weather API returned {e}")
     except Exception:
         raise RuntimeError("Weather service unavailable")
 

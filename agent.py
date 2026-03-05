@@ -39,7 +39,7 @@ async def generate_response(user_input:str, conversation:list):
     return result.final_output
 
 async def test():
-        result = Runner.run_streamed(agent, "Is there some weather alerts in Casablanca ?")
+        result = Runner.run_streamed(agent, "What is the weather in Casablanca ?")
         async for event in result.stream_events():
             if event.type == "run_item_stream_event":
                 if event.item.type == "tool_call_item":
@@ -49,3 +49,6 @@ async def test():
                     print(f"-- Tool output : {event.item.output}")
         print("\n--------------------------------------------------------------\n")
         print(result.final_output)
+ 
+if __name__ == "__main__":
+    asyncio.run(test())
