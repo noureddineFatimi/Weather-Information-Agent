@@ -1,4 +1,3 @@
-from dotenv.variables import Literal
 from pydantic import BaseModel, Field
 
 class Location(BaseModel):

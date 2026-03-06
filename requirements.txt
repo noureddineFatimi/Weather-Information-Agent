@@ -3,7 +3,5 @@ ollama
 python-dotenv
 requests
 pydantic
-Flask[async]
-flask-cors
 quart
 quart-cors
