@@ -70,7 +70,7 @@ class WeatherAlert(BaseModel):
     effective_time: str
     expiry_time: str
 
-class CurrentWeather(BaseModel):
+class Weather(BaseModel):
     temperature: float
     wind_speed: float
     temperature_unit: str

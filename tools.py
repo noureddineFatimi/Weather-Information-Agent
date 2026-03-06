@@ -255,32 +255,32 @@ async def resolve_location(name:str=Field(description="City name to resolve into
 suggest_weather_clothing_cache = {}
 
 @function_tool
-async def suggest_weather_clothing(current_weather: models.CurrentWeather=Field(description="The current weather conditions"), activity_type: Literal["outdoor", "indoor"]=Field(description="The type of activity the user plans to do, either 'outdoor' or 'indoor'")):
+async def suggest_weather_clothing(weather: models.Weather=Field(description="The weather conditions"), activity_type: Literal["outdoor", "indoor"]=Field(description="The type of activity the user plans to do, either 'outdoor' or 'indoor'")):
     """
-    Suggest appropriate clothing based on current weather conditions and activity type.
+    Suggest appropriate clothing based on weather conditions and activity type.
 
     Returns a clothing recommendation string.
     """
-    cache_key = f"clothing_{current_weather.temperature}_{current_weather.temperature_unit}_{current_weather.wind_speed}_{current_weather.wind_speed_unit}_{activity_type}"
+    cache_key = f"clothing_{weather.temperature}_{weather.temperature_unit}_{weather.wind_speed}_{weather.wind_speed_unit}_{activity_type}"
 
     if cache_key in suggest_weather_clothing_cache:
-        print(f"-- Clothing suggestion retrieved from cache for current weather with temperature {current_weather.temperature} {current_weather.temperature_unit} and wind speed {current_weather.wind_speed} {current_weather.wind_speed_unit} and activity type {activity_type} : {suggest_weather_clothing_cache[cache_key]}")
+        print(f"-- Clothing suggestion retrieved from cache for current weather with temperature {weather.temperature} {weather.temperature_unit} and wind speed {weather.wind_speed} {weather.wind_speed_unit} and activity type {activity_type} : {suggest_weather_clothing_cache[cache_key]}")
         return suggest_weather_clothing_cache[cache_key]
 
     recommendations = [] 
-    if current_weather.temperature_unit != "celsius":
-        temperature_celsius = (current_weather.temperature - 32) * 5/9
+    if weather.temperature_unit != "celsius":
+        temperature_celsius = (weather.temperature - 32) * 5/9
     else:
-        temperature_celsius = current_weather.temperature
-    if current_weather.wind_speed_unit != "kmh":
-        if current_weather.wind_speed_unit == "ms":
-            wind_speed_kmh = current_weather.wind_speed * 3.6
-        elif current_weather.wind_speed_unit == "mph":
-            wind_speed_kmh = current_weather.wind_speed * 1.60934
-        elif current_weather.wind_speed_unit == "kn":
-            wind_speed_kmh = current_weather.wind_speed * 1.852
+        temperature_celsius = weather.temperature
+    if weather.wind_speed_unit != "kmh":
+        if weather.wind_speed_unit == "ms":
+            wind_speed_kmh = weather.wind_speed * 3.6
+        elif weather.wind_speed_unit == "mph":
+            wind_speed_kmh = weather.wind_speed * 1.60934
+        elif weather.wind_speed_unit == "kn":
+            wind_speed_kmh = weather.wind_speed * 1.852
     else:
-        wind_speed_kmh = current_weather.wind_speed
+        wind_speed_kmh = weather.wind_speed
     if activity_type == "outdoor":
         if temperature_celsius < 0:
             recommendations.append("It's very cold outside. Wear a heavy coat, gloves, and a hat.")
