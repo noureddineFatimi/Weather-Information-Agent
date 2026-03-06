@@ -24,7 +24,6 @@ class DailyWeatherUnit(BaseModel):
 
 class DailyWeather(BaseModel):
     daily_time: str
-    order_day: int
     temperature_max: float
     temperature_min: float
     precipitation_probability_max: float
@@ -48,7 +47,6 @@ class HourlyWeatherUnit(BaseModel):
 
 class HourlyWeather(BaseModel):
     hourly_time: str
-    order_hour: int
     temperature: float
     relative_humidity: float
     rain: float

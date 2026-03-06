@@ -1,4 +1,4 @@
-from agents import Agent, ItemHelpers, Runner, set_default_openai_client, set_tracing_disabled, set_default_openai_api
+from agents import Agent, Runner, set_default_openai_client, set_tracing_disabled, set_default_openai_api
 from config import OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME
 from openai import AsyncOpenAI
 import asyncio
@@ -12,6 +12,7 @@ set_tracing_disabled(disabled=True)
 
 agent = Agent( name="Weather assistant", instructions="""
             You are a friendly and natural weather assistant.
+	        - YOU MUST USING THE AVAILABLE TOOLS TO OBTAIN DATA INSTEAD OF RELYING ON YOUR OWN KNOWLEDGE WHENEVER A TOOL CAN PROVIDE THE INFORMATION.
             - Answer directly and clearly.
             - Be conversational and human-like.
             - Avoid overly technical formatting.
@@ -35,20 +36,29 @@ agent = Agent( name="Weather assistant", instructions="""
         """, model=OLLAMA_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
 
 async def generate_response(user_input:str, conversation:list):
-    result = await Runner.run(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+    result = Runner.run_streamed(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+    async for event in result.stream_events():
+        if event.type == "run_item_stream_event":
+            if event.item.type == "tool_call_item":
+                print(f"-- Tool called : {event.item.raw_item.name}")
+                print(f"-- Tool arguments : {event.item.raw_item.arguments}")                
+            if event.item.type == "tool_call_output_item":
+                    print(f"-- Tool output : {event.item.output}")
+    print("\n--------------------------------------------------------------\n")
+    print(result.final_output)
     return result.final_output
 
 async def test():
-        result = Runner.run_streamed(agent, "What is the weather in Casablanca ?")
-        async for event in result.stream_events():
-            if event.type == "run_item_stream_event":
-                if event.item.type == "tool_call_item":
-                    print(f"-- Tool called : {event.item.raw_item.name}")
-                    print(f"-- Tool arguments : {event.item.raw_item.arguments}")                
-                if event.item.type == "tool_call_output_item":
+    result = Runner.run_streamed(agent, "What is the weather in Casablanca ?")
+    async for event in result.stream_events():
+        if event.type == "run_item_stream_event":
+            if event.item.type == "tool_call_item":
+                print(f"-- Tool called : {event.item.raw_item.name}")
+                print(f"-- Tool arguments : {event.item.raw_item.arguments}")                
+            if event.item.type == "tool_call_output_item":
                     print(f"-- Tool output : {event.item.output}")
-        print("\n--------------------------------------------------------------\n")
-        print(result.final_output)
+    print("\n--------------------------------------------------------------\n")
+    print(result.final_output)
  
 if __name__ == "__main__":
     asyncio.run(test())

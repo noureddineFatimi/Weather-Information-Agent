@@ -19,6 +19,7 @@ async def get_current_weather(location:models.Location=Field(description="Geogra
     cache_key = f"current_weather_{location.latitude}_{location.longitude}_{temperature_unit}_{wind_speed_unit}"
 
     if cache_key in get_current_weather_cache and time.time() - get_current_weather_cache[cache_key]['timestamp'] < cache_timeout_current_weather:
+            print(f"-- Current weather retrieved from cache for location ({location.latitude}, {location.longitude}) with temperature unit {temperature_unit} and wind speed unit {wind_speed_unit} : {get_current_weather_cache[cache_key]['data']}")
             return get_current_weather_cache[cache_key]['data']
 
     params={
@@ -66,6 +67,7 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
     cache_key = f"weather_forecast_{location.latitude}_{location.longitude}_{temperature_unit}_{wind_speed_unit}_{forecast_days}"
 
     if cache_key in get_weather_forecast_cache and time.time() - get_weather_forecast_cache[cache_key]['timestamp'] < cache_timeout_weather_forecast:
+        print(f"-- Forecast weather retrieved from cache for location ({location.latitude}, {location.longitude}) with temperature unit {temperature_unit} and wind speed unit {wind_speed_unit} : {get_weather_forecast_cache[cache_key]['data']}")
         return get_weather_forecast_cache[cache_key]['data']
 
     daily_forecast_weathers: list[models.DailyWeather] = []
@@ -84,7 +86,7 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
             data = response.json()
             number_of_forecast_days_returned = len(data["daily"]["time"])
             for i in range(number_of_forecast_days_returned):
-                daily_forecast_weather= models.DailyWeather(daily_time=data["daily"]["time"][i], order_day=i + 1, temperature_max=data["daily"]["temperature_2m_max"][i], temperature_min=data["daily"]["temperature_2m_min"][i], precipitation_probability_max=data["daily"]["precipitation_probability_max"][i], wind_speed_max=data["daily"]["wind_speed_10m_max"][i], precipitation_hours=data["daily"]["precipitation_hours"][i])
+                daily_forecast_weather= models.DailyWeather(daily_time=data["daily"]["time"][i], temperature_max=data["daily"]["temperature_2m_max"][i], temperature_min=data["daily"]["temperature_2m_min"][i], precipitation_probability_max=data["daily"]["precipitation_probability_max"][i], wind_speed_max=data["daily"]["wind_speed_10m_max"][i], precipitation_hours=data["daily"]["precipitation_hours"][i])
                 daily_forecast_weathers.append(daily_forecast_weather)
             daily_weather_unit = models.DailyWeatherUnit(time_unit=data["daily_units"]["time"], temperature_unit=data["daily_units"]["temperature_2m_max"], precipitation_probability_unit=data["daily_units"]["precipitation_probability_max"], wind_speed_unit=data["daily_units"]["wind_speed_10m_max"], precipitation_hours_unit=data["daily_units"]["precipitation_hours"])
             get_weather_forecast_cache[cache_key] = {}
@@ -131,7 +133,6 @@ async def get_hourly_forecast(location:models.Location=Field(description="Geogra
             for i in range(number_of_forecast_hours_returned):
                 hourly_forecast_weathers.append(models.HourlyWeather(
                 hourly_time=data["hourly"]["time"][i],
-                order_hour=i + 1,
                 temperature=data["hourly"]["temperature_2m"][i],
                 relative_humidity=data["hourly"]["relative_humidity_2m"][i],
                 rain=data["hourly"]["rain"][i],
@@ -169,6 +170,7 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
     cache_key = f"weather_alerts_{location.latitude}_{location.longitude}_{severity}"
 
     if cache_key in get_weather_alerts_cache:
+        print(f"-- Weather alerts retrieved from cache for location ({location.latitude}, {location.longitude}) with severity {severity} : {get_weather_alerts_cache[cache_key]['data']}")
         return get_weather_alerts_cache[cache_key]
 
     params={ 
@@ -211,7 +213,7 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
 resolve_location_cache = {}
 
 @function_tool
-async def resolve_location(name:str=Field(description="City name to resolve into geographic coordinates (e.g., 'Paris, France')"))-> models.Location:
+async def resolve_location(name:str=Field(description="City name to resolve into geographic coordinates"))-> models.Location:
     """
     Convert a city name into geographic coordinates.
 
@@ -221,6 +223,7 @@ async def resolve_location(name:str=Field(description="City name to resolve into
     cache_key = f"location_{name}"
     
     if cache_key in resolve_location_cache:
+        print(f"-- Location resolved from cache for {name} : {resolve_location_cache[cache_key]}")
         return resolve_location_cache[cache_key]
 
     params={
@@ -261,6 +264,7 @@ async def suggest_weather_clothing(current_weather: models.CurrentWeather=Field(
     cache_key = f"clothing_{current_weather.temperature}_{current_weather.temperature_unit}_{current_weather.wind_speed}_{current_weather.wind_speed_unit}_{activity_type}"
 
     if cache_key in suggest_weather_clothing_cache:
+        print(f"-- Clothing suggestion retrieved from cache for current weather with temperature {current_weather.temperature} {current_weather.temperature_unit} and wind speed {current_weather.wind_speed} {current_weather.wind_speed_unit} and activity type {activity_type} : {suggest_weather_clothing_cache[cache_key]}")
         return suggest_weather_clothing_cache[cache_key]
 
     recommendations = [] 
