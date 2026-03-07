@@ -16,6 +16,7 @@ async def get_current_weather(location:models.Location=Field(description="Geogra
 
     Returns temperature and wind speed, using the specified measurement units.
     """
+    start_time = time.perf_counter()
     cache_key = f"current_weather_{location.latitude}_{location.longitude}_{temperature_unit}_{wind_speed_unit}"
 
     if cache_key in get_current_weather_cache and time.time() - get_current_weather_cache[cache_key]['timestamp'] < cache_timeout_current_weather:
@@ -37,6 +38,9 @@ async def get_current_weather(location:models.Location=Field(description="Geogra
             get_current_weather_cache[cache_key] = {}
             get_current_weather_cache[cache_key]['timestamp'] = time.time()
             get_current_weather_cache[cache_key]['data'] = models.CurrentWeatherResponse(temperature=data["current"]["temperature_2m"], wind_speed=data["current"]["wind_speed_10m"], relative_humidity=data["current"]["relative_humidity_2m"], precipitation=data["current"]["precipitation"], temperature_unit=data["current_units"]["temperature_2m"], wind_speed_unit=data["current_units"]["wind_speed_10m"], relative_humidity_unit=data["current_units"]["relative_humidity_2m"], precipitation_unit=data["current_units"]["precipitation"])
+            end_time = time.perf_counter()
+            tool_time_seconds = round(end_time - start_time, 2)
+            print(f"-- current weather tool response time: {tool_time_seconds} seconds")
             return get_current_weather_cache[cache_key]['data']
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
@@ -63,7 +67,7 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
 
     Returns temperature and wind speed, using the specified measurement units.
     """
-
+    start_time = time.perf_counter()
     cache_key = f"weather_forecast_{location.latitude}_{location.longitude}_{temperature_unit}_{wind_speed_unit}_{forecast_days}"
 
     if cache_key in get_weather_forecast_cache and time.time() - get_weather_forecast_cache[cache_key]['timestamp'] < cache_timeout_weather_forecast:
@@ -92,6 +96,9 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
             get_weather_forecast_cache[cache_key] = {}
             get_weather_forecast_cache[cache_key]['timestamp'] = time.time()
             get_weather_forecast_cache[cache_key]['data'] = models.DailyWeatherResponse(daily_weather_unit=daily_weather_unit, daily_weather=daily_forecast_weathers)
+            end_time = time.perf_counter()
+            tool_time_seconds = round(end_time - start_time, 2)
+            print(f"-- weather forecast tool response time: {tool_time_seconds} seconds")
             return get_weather_forecast_cache[cache_key]['data']
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
@@ -115,6 +122,7 @@ async def get_hourly_forecast(location:models.Location=Field(description="Geogra
 
     Returns temperature and wind speed, using the specified measurement units.
     """
+    start_time = time.perf_counter()
     params={
         "latitude":location.latitude,
         "longitude":location.longitude,
@@ -141,6 +149,9 @@ async def get_hourly_forecast(location:models.Location=Field(description="Geogra
                 precipitation_probability=data["hourly"]["precipitation_probability"][i]
             ))
             hourly_weather_unit = models.HourlyWeatherUnit(utc_offset_seconds=data["utc_offset_seconds"], timezone=data["timezone"], time_unit=data["hourly_units"]["time"], temperature_unit=data["hourly_units"]["temperature_2m"], relative_humidity_unit=data["hourly_units"]["relative_humidity_2m"], rain_unit=data["hourly_units"]["rain"], visibility_unit=data["hourly_units"]["visibility"], wind_speed_unit=data["hourly_units"]["wind_speed_10m"], precipitation_probability_unit=data["hourly_units"]["precipitation_probability"])
+            end_time = time.perf_counter()
+            tool_time_seconds = round(end_time - start_time, 2)
+            print(f"-- weather forecast tool response time: {tool_time_seconds} seconds")
             return models.HourlyWeatherResponse(hourly_weather_unit=hourly_weather_unit, hourly_weather=hourly_forecast_weathers)
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
@@ -167,6 +178,7 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
 
     Returns a list of weather alerts, including their title, severity, urgency, and description.
     """
+    start_time = time.perf_counter()
     cache_key = f"weather_alerts_{location.latitude}_{location.longitude}_{severity}"
 
     if cache_key in get_weather_alerts_cache:
@@ -194,6 +206,9 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
             get_weather_alerts_cache[cache_key] = {}
             get_weather_alerts_cache[cache_key]['timestamp'] = time.time()
             get_weather_alerts_cache[cache_key]['data'] = weather_alerts
+            end_time = time.perf_counter()
+            tool_time_seconds = round(end_time - start_time, 2)
+            print(f"-- weather alerts tool response time: {tool_time_seconds} seconds")
             return get_weather_alerts_cache[cache_key]['data']
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
@@ -219,7 +234,7 @@ async def resolve_location(name:str=Field(description="City name to resolve into
 
     Returns latitude and longitude in decimal degrees.
     """
-
+    start_time = time.perf_counter()
     cache_key = f"location_{name}"
     
     if cache_key in resolve_location_cache:
@@ -236,6 +251,9 @@ async def resolve_location(name:str=Field(description="City name to resolve into
             response.raise_for_status()
             data = response.json()
             resolve_location_cache[cache_key] = models.Location(latitude=data["results"][0]["latitude"], longitude=data["results"][0]["longitude"])
+            end_time = time.perf_counter()
+            tool_time_seconds = round(end_time - start_time, 2)
+            print(f"-- location resolution tool response time: {tool_time_seconds} seconds")
             return resolve_location_cache[cache_key]
     except KeyError:
         raise RuntimeError("Weather API returned unexpected data format")
@@ -261,6 +279,7 @@ async def suggest_weather_clothing(weather: models.Weather=Field(description="Th
 
     Returns a clothing recommendation string.
     """
+    start_time = time.perf_counter()
     cache_key = f"clothing_{weather.temperature}_{weather.temperature_unit}_{weather.wind_speed}_{weather.wind_speed_unit}_{activity_type}"
 
     if cache_key in suggest_weather_clothing_cache:
@@ -303,5 +322,7 @@ async def suggest_weather_clothing(weather: models.Weather=Field(description="Th
             recommendations.append("The indoor temperature is comfortable. Dress as you normally would.")
     
     suggest_weather_clothing_cache[cache_key] = " ".join(recommendations)
-
+    end_time = time.perf_counter()
+    tool_time_seconds = round(end_time - start_time, 2)
+    print(f"-- clothing suggestion tool response time: {tool_time_seconds} seconds")
     return suggest_weather_clothing_cache[cache_key]
