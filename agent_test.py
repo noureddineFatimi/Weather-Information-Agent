@@ -137,5 +137,9 @@ test_prompts = [
     "Who won the world cup in 2022 ?",                # out of scope
 ]
 
+gemini_test_prompts = [
+    "Will it rain in Rabat this afternoon ?"
+]
+
 if __name__ == "__main__":
-    asyncio.run(run_test_suite(agent, test_prompts))
+    asyncio.run(run_test_suite(agent, gemini_test_prompts))
