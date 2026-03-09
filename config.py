@@ -18,9 +18,11 @@ WEATHER_API_KEY=os.getenv("WEATHER_API_KEY") or False
 
 GEOCODING_URL=os.getenv("GEOCODING_URL") or False
 
-if not OLLAMA_API_KEY and not GEMINI_API_KEY or not OLLAMA_BASE_URL and not GEMINI_BASE_URL or not OLLAMA_MODEL_NAME and not GEMINI_MODEL_NAME:
+HUGGING_FACE_API_KEY=os.getenv("HUGGING_FACE_API_KEY")
+
+if not OLLAMA_API_KEY and not GEMINI_API_KEY or not OLLAMA_BASE_URL and not GEMINI_BASE_URL or not OLLAMA_MODEL_NAME and not GEMINI_MODEL_NAME or not HUGGING_FACE_API_KEY:
     raise ValueError(
-        "Please set either OLLAMA_API_KEY or GEMINI_API_KEY or OLLAMA_BASE_URL or GEMINI_BASE_URL or OLLAMA_MODEL_NAME or GEMINI_MODEL_NAME via environment variables or .env file."
+        "Please set either OLLAMA_API_KEY or GEMINI_API_KEY or OLLAMA_BASE_URL or GEMINI_BASE_URL or OLLAMA_MODEL_NAME or GEMINI_MODEL_NAME via environment variables or HUGGING_FACE_API_KEY in .env file."
     )
 
 if not OPENMETEO_BASE_URL or not WEATHER_API_KEY or not WEATHER_BASE_URL or not GEOCODING_URL:

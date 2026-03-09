@@ -5,3 +5,4 @@ requests
 pydantic
 quart
 quart-cors
+openai-agents[litellm]

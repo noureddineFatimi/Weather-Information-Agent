@@ -1,9 +1,15 @@
 from agents import Agent, Runner, set_default_openai_client, set_tracing_disabled, set_default_openai_api
-from config import OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME, GEMINI_API_KEY, GEMINI_MODEL_NAME, GEMINI_BASE_URL
+from config import OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME, GEMINI_API_KEY, GEMINI_MODEL_NAME, GEMINI_BASE_URL, HUGGING_FACE_API_KEY
 from openai import AsyncOpenAI
 import asyncio
 from tools import get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast,get_weather_alerts, suggest_weather_clothing
 from datetime import timezone, datetime
+from agents.extensions.models.litellm_model import LitellmModel
+
+hugging_face_model=LitellmModel(
+    model="huggingface/hyperbolic/openai/gpt-oss-120b",
+    api_key=HUGGING_FACE_API_KEY,
+)
 
 client = AsyncOpenAI(base_url=GEMINI_BASE_URL, api_key=GEMINI_API_KEY)
 
@@ -102,7 +108,7 @@ prompt_3=f"""
     - If the user ask for weather informations for a period of time (like evening, tonight, ...) check first the current UTC time and then compute the forecast_hours parameter for get_hourly_forecast.
     """
 
-agent = Agent(name="Weather assistant", instructions=prompt_3 , model=GEMINI_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
+agent = Agent(name="Weather assistant", instructions=prompt_3 , model=hugging_face_model, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
 
 async def generate_response(user_input:str, conversation:list):
     result = await Runner.run(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
