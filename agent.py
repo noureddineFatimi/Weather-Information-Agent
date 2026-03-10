@@ -7,7 +7,7 @@ from datetime import timezone, datetime
 from agents.extensions.models.litellm_model import LitellmModel
 
 hugging_face_model=LitellmModel(
-    model="huggingface/hyperbolic/openai/gpt-oss-120b",
+    model="huggingface/cerebras/openai/gpt-oss-120b",
     api_key=HUGGING_FACE_API_KEY,
 )
 
