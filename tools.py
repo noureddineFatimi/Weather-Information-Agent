@@ -6,6 +6,8 @@ from pydantic import Field
 import models
 import time
 
+http_client = httpx.AsyncClient()
+
 get_current_weather_cache = {}
 cache_timeout_current_weather = 900
 
@@ -31,8 +33,7 @@ async def get_current_weather(location:models.Location=Field(description="Geogra
 	    "current": ["temperature_2m", "wind_speed_10m", "relative_humidity_2m", "precipitation"]
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
+            response = await http_client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             get_current_weather_cache[cache_key] = {}
@@ -84,8 +85,8 @@ async def get_weather_forecast(location:models.Location=Field(description="Geogr
 	    "daily": ["temperature_2m_max", "temperature_2m_min", "precipitation_probability_max", "wind_speed_10m_max", "precipitation_hours"]
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
+        
+            response = await http_client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             number_of_forecast_days_returned = len(data["daily"]["time"])
@@ -132,8 +133,7 @@ async def get_hourly_forecast(location:models.Location=Field(description="Geogra
 		"hourly": ["temperature_2m", "relative_humidity_2m", "rain", "visibility", "wind_speed_10m", "precipitation_probability"]
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
+            response = await http_client.get(OPENMETEO_BASE_URL + "/v1/forecast", params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             hourly_forecast_weathers: list[models.HourlyWeather] = []
@@ -190,8 +190,7 @@ async def get_weather_alerts(location:models.Location=Field(description="Geograp
         "q":f"{location.latitude},{location.longitude}"
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(WEATHER_BASE_URL + "/v1/alerts.json", params=params, timeout=10)
+            response = await http_client.get(WEATHER_BASE_URL + "/v1/alerts.json", params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             weather_alerts: list[models.WeatherAlert] = []
@@ -246,8 +245,7 @@ async def resolve_location(name:str=Field(description="City name to resolve into
         "count":1
     }
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(GEOCODING_URL, params=params, timeout=10)
+            response = await http_client.get(GEOCODING_URL, params=params, timeout=10)
             response.raise_for_status()
             data = response.json()
             resolve_location_cache[cache_key] = models.Location(latitude=data["results"][0]["latitude"], longitude=data["results"][0]["longitude"])
