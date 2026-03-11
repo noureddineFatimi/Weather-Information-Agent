@@ -2,6 +2,7 @@ from agents import Agent, Runner, set_default_openai_client, set_tracing_disable
 from config import OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME, GEMINI_API_KEY, GEMINI_MODEL_NAME, GEMINI_BASE_URL, HUGGING_FACE_API_KEY
 from openai import AsyncOpenAI
 import asyncio
+from openai.types.responses import ResponseTextDeltaEvent
 from tools import get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast,get_weather_alerts, suggest_weather_clothing
 from datetime import timezone, datetime
 from agents.extensions.models.litellm_model import LitellmModel
@@ -11,7 +12,7 @@ hugging_face_model=LitellmModel(
     api_key=HUGGING_FACE_API_KEY,
 )
 
-client = AsyncOpenAI(base_url=GEMINI_BASE_URL, api_key=GEMINI_API_KEY)
+client = AsyncOpenAI(base_url=OLLAMA_BASE_URL, api_key=OLLAMA_API_KEY)
 
 set_default_openai_client(client=client, use_for_tracing=False)
 set_default_openai_api("chat_completions")
@@ -108,11 +109,17 @@ prompt_3=f"""
     - If the user ask for weather informations for a period of time (like evening, tonight, ...) check first the current UTC time and then compute the forecast_hours parameter for get_hourly_forecast.
     """
 
-agent = Agent(name="Weather assistant", instructions=prompt_3 , model=hugging_face_model, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
+agent = Agent(name="Weather assistant", instructions=prompt_3 , model=OLLAMA_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
 
 async def generate_response(user_input:str, conversation:list):
     result = await Runner.run(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
     return result.final_output
+
+async def generate_stream_response(user_input:str, conversation:list):
+    result = Runner.run_streamed(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+    async for event in result.stream_events():
+        if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+            yield event.data.delta
 
 async def test():
     print("\nTo quit type 'exit'\n")
@@ -137,4 +144,4 @@ async def test():
     print("Good Bye")
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(generate_stream_response("What's the weather like in Paris now?", []))
