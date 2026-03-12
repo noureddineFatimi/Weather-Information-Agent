@@ -1,7 +1,8 @@
 from quart import Quart, request
-from agent import generate_response, generate_stream_response
+from agent import generate_response, generate_stream_response, generate_stream_response_by_model
 from werkzeug.exceptions import HTTPException
 from agents import ModelBehaviorError, MaxTurnsExceeded
+from openai import APIConnectionError
 from quart_cors import cors
 from quart import Response
 
@@ -16,15 +17,10 @@ async def generate_chat_response():
             return {"error": "Request must contain JSON body"}, 400
         user_input = data.get("user_input")
         conversation = data.get("conversation")
-        if user_input==None or conversation==None:
-            return {"error": "Keys 'user_input' and 'conversation' are required"}, 400
-        return Response(generate_stream_response(user_input=user_input, conversation=conversation), content_type="text/plain")
-    except ModelBehaviorError:
-        return {"error": "Model encountered an error"}, 500
-    except MaxTurnsExceeded:
-        return {"error": "Conversation too long"}, 400
-    except HTTPException:
-        raise 
+        model = data.get("model")
+        if user_input==None or conversation==None or model==None:
+            return {"error": "Keys 'user_input', 'model' and 'conversation' are required"}, 400
+        return Response(generate_stream_response_by_model(user_input=user_input, conversation=conversation, model=model), content_type="text/plain")
     except Exception:
         return {"error": "Internal Server Error"}, 500
 
@@ -43,6 +39,8 @@ async def generate_agent_response():
             conversation=conversation
         )
         return {"response": agent_response}, 200
+    except APIConnectionError:
+        return {"error": "Network error"}, 500
     except ModelBehaviorError:
         return {"error": "Model encountered an error"}, 500
     except MaxTurnsExceeded:

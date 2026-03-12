@@ -11,7 +11,7 @@ http_client = httpx.AsyncClient()
 get_current_weather_cache = {}
 cache_timeout_current_weather = 900
 
-@function_tool(failure_error_function=None)
+@function_tool
 async def get_current_weather(location:models.Location=Field(description="Geographic coordinates (latitude and longitude in decimal degrees)"), temperature_unit:Literal["celsius", "fahrenheit"]="celsius", wind_speed_unit:Literal["kmh", "ms", "mph", "kn"]="kmh")-> models.CurrentWeatherResponse:
     """"
     Retrieve current weather conditions for a given location.

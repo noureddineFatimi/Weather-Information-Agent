@@ -548,7 +548,7 @@ if __name__ == "__main__":
         
         # Create orchestrator
         print("\n[*] Initializing orchestrator agent...")
-        orchestrator = await create_orchestrator(use_gemini=True)
+        orchestrator = await create_orchestrator(use_gemini=False)
         print(f"[✓] Orchestrator initialized")
         print(f"[✓] Available agents: {orchestrator.list_agents()}")
         

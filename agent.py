@@ -1,21 +1,14 @@
 from agents import Agent, Runner, set_default_openai_client, set_tracing_disabled, set_default_openai_api
 from config import OLLAMA_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME, GEMINI_API_KEY, GEMINI_MODEL_NAME, GEMINI_BASE_URL, HUGGING_FACE_API_KEY
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, APIConnectionError
 import asyncio
 from openai.types.responses import ResponseTextDeltaEvent
 from tools import get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast,get_weather_alerts, suggest_weather_clothing
 from datetime import timezone, datetime
 from agents.extensions.models.litellm_model import LitellmModel
+from agents import ModelBehaviorError, MaxTurnsExceeded
 
-hugging_face_model=LitellmModel(
-    model="huggingface/cerebras/openai/gpt-oss-120b",
-    api_key=HUGGING_FACE_API_KEY,
-)
-
-client = AsyncOpenAI(base_url=OLLAMA_BASE_URL, api_key=OLLAMA_API_KEY)
-
-set_default_openai_client(client=client, use_for_tracing=False)
-set_default_openai_api("chat_completions")
+set_default_openai_api("chat_completions") 
 set_tracing_disabled(disabled=True)
 
 prompt_1= """
@@ -91,7 +84,7 @@ prompt_3=f"""
     You are a friendly and natural weather assistant.
 
     ## CORE BEHAVIOR
-    - Always use the available tools to fetch data. Never rely on your own knowledge for weather information.
+    - Always use the available tools to fetch data like weather conditions, weather alerts, etc. Never rely on your own knowledge for weather information.
     - Answer directly, clearly, and in a conversational human-like tone.
     - Avoid overly technical formatting.
     - Search only the weather data using the tools that respond to the user question.
@@ -109,18 +102,76 @@ prompt_3=f"""
     - If the user ask for weather informations for a period of time (like evening, tonight, ...) check first the current UTC time and then compute the forecast_hours parameter for get_hourly_forecast.
     """
 
-agent = Agent(name="Weather assistant", instructions=prompt_3 , model=OLLAMA_MODEL_NAME, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])    
+qwen_model = LitellmModel(
+    model=f"openai/{OLLAMA_MODEL_NAME}",
+    base_url=OLLAMA_BASE_URL,
+    api_key=OLLAMA_API_KEY
+)
 
-async def generate_response(user_input:str, conversation:list):
-    result = await Runner.run(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+
+qwen_agent = Agent(name="Weather assistant", instructions=prompt_3 , model=qwen_model, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])
+
+gemini_model = LitellmModel(
+    model=f"openai/{GEMINI_MODEL_NAME}",
+    base_url=GEMINI_BASE_URL,
+    api_key=GEMINI_API_KEY
+)
+
+gemini_agent = Agent(name="Weather assistant", instructions=prompt_3 , model=gemini_model, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing]) 
+
+gpt_model=LitellmModel( model="huggingface/sambanova/openai/gpt-oss-120b", api_key=HUGGING_FACE_API_KEY, ) 
+
+gpt_agent = Agent(name="Weather assistant", instructions=prompt_3 , model=gpt_model, tools=[get_weather_alerts, get_current_weather, resolve_location, get_weather_forecast, get_hourly_forecast, suggest_weather_clothing])
+
+
+async def generate_response(user_input:str, conversation:list, model: str):
+    if model == "qwen":
+        result = await Runner.run(qwen_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+    elif model == "gemini":
+        result = await Runner.run(gemini_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+    else:
+        result = await Runner.run(gpt_agent, input=conversation +  [{"role": "user", "content": user_input}])
+    print(result.final_output)
     return result.final_output
 
-async def generate_stream_response(user_input:str, conversation:list):
-    result = Runner.run_streamed(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
-    async for event in result.stream_events():
-        if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
-            yield event.data.delta
+async def generate_stream_response_by_model(user_input:str, conversation:list, model:str):
+    try:
+        if model == "qwen":
+            result = Runner.run_streamed(qwen_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+        elif model == "gemini":
+            result = Runner.run_streamed(gemini_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+        elif model == "gpt-oss":
+            result = Runner.run_streamed(gpt_agent, input=conversation +  [{"role": "user", "content": user_input}])
+        else:
+            yield "[ERROR:MODEL_NOT_FOUND]"
+            return
+        try:
+            async for event in result.stream_events():
+                if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                    yield event.data.delta
+        except Exception:
+             yield "[ERROR:MODEL_PROVIDER_ERROR]"
+    except APIConnectionError:
+            yield "[ERROR:CONNECTION_LOST]"
+    except ModelBehaviorError:
+            yield "[ERROR:MODEL_ERROR]"
+    except MaxTurnsExceeded:
+            yield "[ERROR:MAX_TURN_EXCEEDE]"
 
+async def generate_stream_response(user_input:str, conversation:list):
+    try:
+        result = Runner.run_streamed(qwen_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+        async for event in result.stream_events():
+            if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+                yield event.data.delta
+    except APIConnectionError:
+            yield "[ERROR:CONNECTION_LOST]"
+    except ModelBehaviorError:
+            yield "[ERROR:MODEL_ERROR]"
+    except MaxTurnsExceeded:
+            yield "[ERROR:MAX_TURN_EXCEEDE]" #les erreurs dans les tools sont catched par sdk et envoyer erreur eu modele, les ereeurs ModelBehaviorError et Maxturnedexced sont pas catched par sdk et le SDK lève l'exceptions et agent crache (L'exécution du code s'arrête immédiatement à ce point.), donc on les cathes manuellement.
+            #puisque on a le streaming ici donc on va utiliser les indicateurs [ERROR:MAX_TURN_EXCEEDE] pour le front end , au cas de requete normale on utilise le sattus code pour le front end (403, 512, ...) pour afficher le message convenable 
+            #on a catche les exceptions ModelBehaviorError et Maxturnedexced ... ici au lieu du dans lapi car on straeming qui renvoie 200 meme si on a lexception 
 async def test():
     print("\nTo quit type 'exit'\n")
     conversation=[]
@@ -128,8 +179,14 @@ async def test():
         user_input=input("You: ")
         if user_input.lower() == "exit":
             break
+        model=input("Model (qwen, gemini, gpt-oss):  ")
         print("\n--------------------------------------------------------------\n")
-        result = Runner.run_streamed(agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+        if model == "qwen":
+            result = Runner.run_streamed(qwen_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+        elif model == "gemini":
+            result = Runner.run_streamed(gemini_agent, input=conversation +  [{"role": "user", "content": f"{user_input}"}])
+        else:
+            result = Runner.run_streamed(gpt_agent, input=conversation +  [{"role": "user", "content": user_input}])
         async for event in result.stream_events():
             if event.type == "run_item_stream_event":
                 if event.item.type == "tool_call_item":
@@ -138,10 +195,13 @@ async def test():
                 if event.item.type == "tool_call_output_item":
                         print(f"-- Tool output : {event.item.output}")
         print("\n--------------------------------------------------------------\n")
+        for response in result.raw_responses:
+            # L'objet 'response' contient les métadonnées de l'API OpenAI
+            print(f"Informations sur le Modèle utilisé pour cette étape : {response.output}")
         print("Agent: " + result.final_output + "\n")
         conversation.append({"role": "user", "content": user_input })
         conversation.append({"role": "assistant", "content": result.final_output})
     print("Good Bye")
 
 if __name__ == "__main__":
-    asyncio.run(generate_stream_response("What's the weather like in Paris now?", []))
+    asyncio.run(generate_response("hi",[],"qwen"))
